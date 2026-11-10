@@ -75,7 +75,10 @@ import {
   LAUNCH_CHILD_CONVERSATION_CLIENT_TOOL,
   LAUNCH_CHILD_CONVERSATION_TOOL_NAME,
 } from "./launch-child-conversation-client-tool";
-import { buildAutomationFormUpdateClientTool } from "./automation-form-client-tool";
+import {
+  AUTOMATION_SETUP_SYSTEM_SUFFIX,
+  buildAutomationFormUpdateClientTool,
+} from "./automation-form-client-tool";
 import type { DeploymentCapabilities } from "#/manifests/types";
 import { REQUEST_SECRET_CLIENT_TOOL } from "./request-secret-client-tool";
 import {
@@ -93,6 +96,7 @@ export interface DirectConversationInfo {
   created_at: string;
   updated_at: string;
   execution_status?: string | null;
+  max_budget_per_run?: number | null;
   /** Cloud-only sandbox lifecycle state. Omitted / null for local agent-server conversations. */
   sandbox_status?: string | null;
   /** Availability of the runtime that backs a local conversation. */
@@ -1065,6 +1069,7 @@ export interface StartConversationOptions {
   query?: string;
   automationSetup?: boolean;
   automationSetupTags?: Record<string, string>;
+  automationSetupContext?: string;
   /**
    * What the automation service reports it supports, so the setup assistant's
    * form tool can name this deployment's event sources. Null when it could
@@ -1152,6 +1157,12 @@ export function buildStartConversationRequest(
         !options.suppressRouterAtStart,
       options.profileHasRouter ?? false,
     ),
+    // Sent with the form tool below, which only OpenHands profiles get.
+    options.automationSetup && options.agentProfileKind === "openhands"
+      ? [AUTOMATION_SETUP_SYSTEM_SUFFIX, options.automationSetupContext]
+          .filter(Boolean)
+          .join("\n\n")
+      : null,
   ]
     .filter((suffix): suffix is string => Boolean(suffix))
     .join("\n\n");
@@ -1184,6 +1195,11 @@ export function buildStartConversationRequest(
 
   const conversationSettings = buildConfiguredConversationSettings({
     ...sourceConversationOptions,
+    ...(options.automationSetup &&
+    options.agentProfileKind === "acp" &&
+    options.automationSetupContext
+      ? { query: `${options.query ?? ""}\n\n${options.automationSetupContext}` }
+      : {}),
     executionRuntime: options.executionRuntime,
   });
 
@@ -1270,8 +1286,7 @@ export function buildStartConversationRequest(
 
   const toolModuleQualnames = {
     ...((conversationSettings.tool_module_qualnames as
-      | Record<string, string>
-      | undefined) ?? {}),
+      Record<string, string> | undefined) ?? {}),
   };
   delete toolModuleQualnames[LEGACY_CANVAS_UI_TOOL_NAME];
   delete toolModuleQualnames[CANVAS_UI_CLIENT_TOOL_NAME];
@@ -1605,6 +1620,7 @@ export async function buildStartConversationRequestWithEncryptedSettings(options
   query?: string;
   automationSetup?: boolean;
   automationSetupTags?: Record<string, string>;
+  automationSetupContext?: string;
   automationSetupCapabilities?: DeploymentCapabilities | null;
   conversationInstructions?: string;
   plugins?: PluginSpec[];
