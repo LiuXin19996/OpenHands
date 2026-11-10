@@ -3,5 +3,5 @@
   <component name="Black">
     <option name="sdkName" value="WSL (ubuntu-26.04): (/home/viktor/anaconda3/envs/wsl-openhands/bin/python)" />
   </component>
-  <component name="ProjectRootManager" version="2" project-jdk-name="WSL (ubuntu-26.04): (/home/viktor/anaconda3/envs/wsl-openhands-v1/bin/python)" project-jdk-type="Python SDK" />
+  <component name="ProjectRootManager" version="2" />
 </project>
